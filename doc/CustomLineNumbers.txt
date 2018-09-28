@@ -1,0 +1,28 @@
+
+********************************************************************************
+*                                                                              *
+*          CustomLineNumbers plugin v1.0 for Notepad++                         *
+*          Builds for 32 and 64 bits Notepad++ installations available         *
+*                                                                              *
+*          Author: Andreas Heim, 2018                                          *
+*                                                                              *
+********************************************************************************
+
+
+
+============
+  Features
+============
+
+With this plugin you can display line numbers in the line number margin of
+Notepad++ in a customizable format, e.g. as hex numbers.
+
+
+===========
+  History
+===========
+
+v1.0 - September 2018
+~~~~~~~~~~~~~~~~~~~~~
+- Initial version
+
