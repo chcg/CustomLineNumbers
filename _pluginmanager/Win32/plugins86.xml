@@ -2,7 +2,7 @@
 <plugins>
 	<plugin name="CustomLineNumbers">
 		<unicodeVersion>1.0</unicodeVersion>
-		<description>CustomLineNumbers: A plugin to display line numbers in various custom formats.</description>
+		<description>CustomLineNumbers: A plugin to display line numbers in a custom format.</description>
 		<author>Andreas Heim</author>
 		<sourceUrl>https://github.com/dinkumoil/CustomLineNumbers</sourceUrl>
 		<latestUpdate></latestUpdate>
