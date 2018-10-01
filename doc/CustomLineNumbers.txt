@@ -24,8 +24,10 @@ Notepad++ in a customizable format, e.g. as hex numbers.
 
 v1.1 - September 2018
 ~~~~~~~~~~~~~~~~~~~~~
-- enhanced: Displaying line numbers as hexadecimal numbers and line numbers offset can be configured now.
-- enhanced: Reduced superfluous calls to line numbering function, useful especially when working with large files.
+- enhanced: Displaying line numbers as hexadecimal numbers and line numbers
+  offset can be configured now.
+- enhanced: Reduced superfluous calls to line numbering function, useful
+  especially when working with large files.
 
 
 v1.0 - September 2018
