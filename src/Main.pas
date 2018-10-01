@@ -48,6 +48,7 @@ type
     // Functions to handle Notepad++ document actions
     procedure   CheckBufferChanges; overload;
     procedure   CheckBufferChanges(ViewIdx, BufferId: integer); overload;
+    procedure   CheckTextChanges;
     procedure   ApplyFileChanges;
     procedure   RemoveCurrentBufferFromCatalog;
     procedure   RemoveAllBuffersFromCatalog;
@@ -364,35 +365,21 @@ end;
 
 // Called after a line of text has been inserted into the current document
 procedure TCustomLineNumbersPlugin.DoScnnInsertText;
-var
-  ViewIdx: integer;
-
 begin
   if not Enabled  then exit;
   if FBlockEvents then exit;
 
-  if SCNotification.linesAdded <> 0 then
-  begin
-    ViewIdx := GetCurrentViewIdx();
-    UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
-  end;
+  CheckTextChanges();
 end;
 
 
 // Called after a line of text has been deleted from the current document
 procedure TCustomLineNumbersPlugin.DoScnnDeleteText;
-var
-  ViewIdx: integer;
-
 begin
   if not Enabled  then exit;
   if FBlockEvents then exit;
 
-  if SCNotification.linesAdded <> 0 then
-  begin
-    ViewIdx := GetCurrentViewIdx();
-    UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
-  end;
+  CheckTextChanges();
 end;
 
 
@@ -444,6 +431,20 @@ begin
 
     // Init line numbers
     UpdateLineNumbers(ViewIdx, 0);
+  end;
+end;
+
+
+// Init line numbers of a certain text buffer after text changes
+procedure TCustomLineNumbersPlugin.CheckTextChanges;
+var
+  ViewIdx: integer;
+
+begin
+  if SCNotification.linesAdded <> 0 then
+  begin
+    ViewIdx := GetCurrentViewIdx();
+    UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
   end;
 end;
 
