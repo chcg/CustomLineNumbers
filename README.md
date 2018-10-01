@@ -20,5 +20,9 @@ With this plugin you can display line numbers in the line number margin of Notep
 
 # History
 
+v1.1 - September 2018
+* enhanced: Displaying line numbers as hexadecimal numbers and line numbers offset can be configured now.
+* enhanced: Reduced superfluous calls to line numbering function, useful especially when working with large files.
+
 v1.0 - September 2018
-- Initial version
+* Initial version
