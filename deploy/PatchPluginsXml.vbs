@@ -30,8 +30,11 @@ Option Explicit
 
 
 'Declare variables
-Dim strEnvVar, strPluginName, strPlatform, strXmlFile, strVersionKey
-Dim objFSO, objWshShell, objXmlDoc, objPluginNode, objVersionNode
+Dim strEnvVar, strPluginName, strPlatform, strPlatformAlias, strRepositoryBaseUrl
+Dim strXmlFile, strVersion, strVersionKey, strSourceUrlKey, strDownloadKey
+
+Dim objFSO, objWshShell, objXmlDoc
+Dim objPluginNode, objVersionNode, objSourceUrlNode, objDownloadNode
 
 
 'Create some basic objects
@@ -54,14 +57,21 @@ End If
 'Retrieve target platform from environment variable
 strPlatform = objWshShell.ExpandEnvironmentStrings("%Platform%")
 
+'Set target platform platform independent variables
+strRepositoryBaseUrl = "https://github.com/dinkumoil/" & strPluginName
+strSourceUrlKey      = "sourceUrl"
+strDownloadKey       = "install/unicode/download"
+
 'Set target platform specific variables
 If StrComp(strPlatform, "Win32", vbTextCompare) = 0 Then
-  strEnvVar     = "%Plugins86XmlFile%"
-  strVersionKey = "unicodeVersion"
+  strEnvVar        = "%Plugins86XmlFile%"
+  strPlatformAlias = "UNI"
+  strVersionKey    = "unicodeVersion"
 
 ElseIf StrComp(strPlatform, "Win64", vbTextCompare) = 0 Then
-  strEnvVar     = "%Plugins64XmlFile%"
-  strVersionKey = "x64Version"
+  strEnvVar        = "%Plugins64XmlFile%"
+  strPlatformAlias = "x64"
+  strVersionKey    = "x64Version"
   
 Else
   WScript.Echo WScript.ScriptName & ": Unknown target platform"
@@ -93,6 +103,9 @@ End If
 If WScript.Arguments.Count < 1 Then
   WScript.Echo WScript.ScriptName & ": Missing arguments"
   WScript.Quit 5
+Else
+  'Retrieve plugin version from command line param
+  strVersion = WScript.Arguments(0)
 End If
 
 
@@ -107,12 +120,21 @@ If objXmlDoc.parseError.errorCode <> 0 Then
 End If
 
 
-'Retrieve plugin's root node and from that its version node
-Set objPluginNode  = objXmlDoc.documentElement.selectSingleNode("//plugin[@name='" & strPluginName & "']")
-Set objVersionNode = objPluginNode.selectSingleNode(strVersionKey)
+'Retrieve plugin's root node
+Set objPluginNode = objXmlDoc.documentElement.selectSingleNode("//plugin[@name='" & strPluginName & "']")
 
-'Set version node's value
-objVersionNode.nodeTypedValue = WScript.Arguments(0)
+'Retrieve plugin's version node and set its value
+Set objVersionNode = objPluginNode.selectSingleNode(strVersionKey)
+objVersionNode.nodeTypedValue = strVersion
+
+'Retrieve plugin's sourceURL node and set its value
+Set objSourceUrlNode = objPluginNode.selectSingleNode(strSourceUrlKey)
+objSourceUrlNode.nodeTypedValue = strRepositoryBaseUrl
+
+'Retrieve plugin's download node and set its value
+Set objDownloadNode = objPluginNode.selectSingleNode(strDownloadKey)
+objDownloadNode.nodeTypedValue = strRepositoryBaseUrl & "/releases/download/v" & strVersion & "/" & strPluginName & "_v" & strVersion & "_" & strPlatformAlias & ".zip"
+
 
 'Save XML file
 objXmlDoc.save(strXmlFile)

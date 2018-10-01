@@ -8,7 +8,7 @@
 		<latestUpdate>Enhanced: Displaying line numbers as hexadecimal numbers and line numbers offset can be configured now.</latestUpdate>
 		<install>
 			<unicode>
-				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.1/CustomLineNumbers_v1.1_Uni.zip</download>
+				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.1/CustomLineNumbers_v1.1_UNI.zip</download>
 				<copy from="Win32\CustomLineNumbers.dll" to="$PLUGINDIR$\" validate="true"/>
 				<copy from="CustomLineNumbers.txt" to="$PLUGINDIR$\doc"/>
 			</unicode>
