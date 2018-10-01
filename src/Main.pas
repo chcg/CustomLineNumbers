@@ -41,16 +41,19 @@ type
     TBufferCatalog = TDictionary<integer, string>;
 
   private
-    FSettings: TSettings;
-    FBuffers:  TBufferCatalog;
+    FSettings:    TSettings;
+    FBuffers:     TBufferCatalog;
+    FBlockEvents: boolean;
 
     // Functions to handle Notepad++ document actions
-    procedure   CheckBufferChanges;
+    procedure   CheckBufferChanges; overload;
+    procedure   CheckBufferChanges(ViewIdx, BufferId: integer); overload;
+    procedure   ApplyFileChanges;
     procedure   RemoveCurrentBufferFromCatalog;
     procedure   RemoveAllBuffersFromCatalog;
 
     // Function to write line numbers
-    procedure   UpdateLineNumbers(StartLineNumber: integer); overload;
+    procedure   UpdateLineNumbers(ViewIdx, StartLineNumber: integer); overload;
 
     // Getter/Setter
     function    GetEnabled: boolean;
@@ -59,12 +62,17 @@ type
   protected
     // Handler for certain Notepad++ events
     procedure   DoNppnReady; override;
-    procedure   DoNppnBufferActivated; override;
+    procedure   DoNppnFileBeforeLoad; override;
+    procedure   DoNppnFileLoadFailed; override;
+    procedure   DoNppnFileOpened; override;
     procedure   DoNppnFileBeforeClose; override;
+    procedure   DoNppnBufferActivated; override;
+    procedure   DoNppnFileRenamed; override;
+    procedure   DoNppnShutdown; override;
 
     // Handler for certain Scintilla events
-    procedure   DoScnnInsertText(LineNumber: integer); override;
-    procedure   DoScnnDeleteText(LineNumber: integer); override;
+    procedure   DoScnnInsertText; override;
+    procedure   DoScnnDeleteText; override;
 
   public
     constructor Create; override;
@@ -74,7 +82,7 @@ type
     procedure   LoadSettings();
     procedure   UnloadSettings();
 
-    procedure   UpdateCurBuffer();
+    procedure   UpdateAllViews();
     procedure   Activate();
 
     property    Enabled: boolean read GetEnabled write SetEnabled;
@@ -116,6 +124,41 @@ procedure ShowAbout; cdecl; forward;
 // Class TCustomLineNumbersPlugin
 // =============================================================================
 
+// The process of displaying custom line numbers is time consuming, especially
+// when working with large files with 10000 lines or more (depends on the hard-
+// ware Notepad++ runs on).
+//
+// The function should be called in the following cases:
+//   * After startup of Notepad++ has been finished, depending on plugin's acti-
+//     vation status loaded from the settings file.
+//   * A file is loaded into Notepad++ to the main or the second view.
+//   * A line is added to a document displayed in the main or the second view.
+//   * A line is deleted from a document displayed in the main or the second view.
+//   * A document is moved or cloned from one view to the other.
+//   * A file is opened in a buffer whose file already has been closed, the
+//     buffer gets reused for the new file and its ID remains the same.
+//   * The plugin's settings are changed, the active documents of both views
+//     have to be processed.
+//   * The plugin is activated, the active documents of both views have to be
+//     processed.
+//   * A document's tab is activated or becomes visible after the plugin has
+//     been reactivated.
+//
+// The function should NOT be called in the following cases:
+//   * An unchanged document's tab is activated or becomes visible.
+//   * A document is renamed (the content remains the same).
+//   * During loading a file (ignore "line added" events).
+//   * During exiting Notepad++.
+//
+// To prevent the function for custom line numbering to be called though it's
+// not neccessary we need to do some bookkeeping. Already processed documents
+// are stored in a dictionary as key-value pairs with the buffer ID as the key
+// and the full path to the document as the value. If a document is found in
+// the dictionary the function for custom line numbering is not called. Only
+// "line added" and "line deleted" events are processed always (except the
+// plugin is deactivated or Notepad++ is in state "loading a file").
+
+
 // -----------------------------------------------------------------------------
 // Create / Destroy
 // -----------------------------------------------------------------------------
@@ -134,17 +177,19 @@ begin
 
   // Add plugins's menu entries to Notepad++
   AddFuncItem(TXT_MENUITEM_ACTIVE,   ActivatePlugin);
-//  AddFuncItem(TXT_MENUITEM_SETTINGS, ShowSettings);
+  AddFuncItem(TXT_MENUITEM_SETTINGS, ShowSettings);
   AddFuncItem(TXT_MENUITEM_ABOUT,    ShowAbout);
 
-  FBuffers := TBufferCatalog.Create;
+  FBuffers     := TBufferCatalog.Create;
+  FBlockEvents := false;
 end;
 
 
 destructor TCustomLineNumbersPlugin.Destroy;
 begin
   // Cleanup
-  RemoveAllBuffersFromCatalog();
+  FBuffers.Free;
+
   UnloadSettings();
 
   // It's totally legal to call Free on already freed instances,
@@ -164,6 +209,10 @@ end;
 procedure TCustomLineNumbersPlugin.LoadSettings;
 begin
   FSettings := TSettings.Create(TSettings.FilePath);
+
+  // Invert enabled status read from settings because
+  // in ActivatePlugin it will be inverted again
+  FSettings.Enabled := not FSettings.Enabled;
 end;
 
 
@@ -174,28 +223,34 @@ begin
 end;
 
 
-// Emulate the activation of a document's tab in Notepad++
-procedure TCustomLineNumbersPlugin.UpdateCurBuffer;
+// Update active document of all views
+procedure TCustomLineNumbersPlugin.UpdateAllViews;
 begin
-  DoNppnBufferActivated();
+  if not Enabled then exit;
+
+  CheckBufferChanges();
 end;
 
 
 // Switch margin type according to plugin's activation state
 procedure TCustomLineNumbersPlugin.Activate;
 begin
-  FSettings.Enabled := Enabled;
-
   if Enabled then
   begin
+    // Set type of margin 0 to right-aligned text
     SendMessage(NppData.ScintillaMainHandle, SCI_SETMARGINTYPEN, WPARAM(0), LPARAM(SC_MARGIN_RTEXT));
     SendMessage(NppData.ScintillaSecondHandle, SCI_SETMARGINTYPEN, WPARAM(0), LPARAM(SC_MARGIN_RTEXT));
-    UpdateCurBuffer();
+
+    // Apply setting to the active document of all views
+    UpdateAllViews();
   end
   else
   begin
+    // Set type of margin 0 to line numbers
     SendMessage(NppData.ScintillaMainHandle, SCI_SETMARGINTYPEN, WPARAM(0), LPARAM(SC_MARGIN_NUMBER));
     SendMessage(NppData.ScintillaSecondHandle, SCI_SETMARGINTYPEN, WPARAM(0), LPARAM(SC_MARGIN_NUMBER));
+
+    // Clear catalog of already processed documents
     RemoveAllBuffersFromCatalog();
   end;
 end;
@@ -205,6 +260,7 @@ end;
 // Getter/Setter
 // -----------------------------------------------------------------------------
 
+// Read Enabled status from settings data model
 function TCustomLineNumbersPlugin.GetEnabled: boolean;
 begin
   if Assigned(FSettings) then
@@ -214,6 +270,7 @@ begin
 end;
 
 
+// Write Enabled status to settings data model
 procedure TCustomLineNumbersPlugin.SetEnabled(Value: boolean);
 begin
   if Assigned(FSettings) then
@@ -230,44 +287,112 @@ procedure TCustomLineNumbersPlugin.DoNppnReady;
 begin
   inherited;
 
-  // Load settings and apply them to the active document
+  // Load settings and apply them to the active document of all views
   LoadSettings();
   ActivatePlugin();
 end;
 
 
-// Called after activating the tab of a file
-procedure TCustomLineNumbersPlugin.DoNppnBufferActivated;
+// Called before a file is loaded
+procedure TCustomLineNumbersPlugin.DoNppnFileBeforeLoad;
 begin
   if not Enabled then exit;
-  CheckBufferChanges();
+
+  FBlockEvents := true;
 end;
 
 
-// Called just before a file and its tab is closed
+// Called after a file load operation has failed
+procedure TCustomLineNumbersPlugin.DoNppnFileLoadFailed;
+begin
+  if not Enabled then exit;
+
+  FBlockEvents := false;
+end;
+
+
+// Called after a file is opened
+procedure TCustomLineNumbersPlugin.DoNppnFileOpened;
+begin
+  if not Enabled then exit;
+
+  FBlockEvents := false;
+end;
+
+
+// Called before a file and its tab is closed
 procedure TCustomLineNumbersPlugin.DoNppnFileBeforeClose;
 begin
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
   RemoveCurrentBufferFromCatalog();
 end;
 
 
-// Called after a line of text has been inserted into the current document
-procedure TCustomLineNumbersPlugin.DoScnnInsertText(LineNumber: integer);
+// Called after activating the tab of a file
+procedure TCustomLineNumbersPlugin.DoNppnBufferActivated;
+var
+  NotUsed: integer;
+  ViewIdx: integer;
+
 begin
-  if not Enabled then exit;
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
+  ViewIdx := GetPosFromBufferId(SCNotification.nmhdr.idFrom, NotUsed);
+  CheckBufferChanges(ViewIdx, SCNotification.nmhdr.idFrom);
+end;
+
+
+// Called after a file is renamed
+procedure TCustomLineNumbersPlugin.DoNppnFileRenamed;
+begin
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
+  ApplyFileChanges();
+end;
+
+
+// Called before Notepad++ shuts down
+procedure TCustomLineNumbersPlugin.DoNppnShutdown;
+begin
+  FBlockEvents := true;
+end;
+
+
+// Called after a line of text has been inserted into the current document
+procedure TCustomLineNumbersPlugin.DoScnnInsertText;
+var
+  ViewIdx: integer;
+
+begin
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
 
   if SCNotification.linesAdded <> 0 then
-    UpdateLineNumbers(LineNumber);
+  begin
+    ViewIdx := GetCurrentViewIdx();
+    UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
+  end;
 end;
 
 
 // Called after a line of text has been deleted from the current document
-procedure TCustomLineNumbersPlugin.DoScnnDeleteText(LineNumber: integer);
+procedure TCustomLineNumbersPlugin.DoScnnDeleteText;
+var
+  ViewIdx: integer;
+
 begin
-  if not Enabled then exit;
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
 
   if SCNotification.linesAdded <> 0 then
-    UpdateLineNumbers(LineNumber);
+  begin
+    ViewIdx := GetCurrentViewIdx();
+    UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
+  end;
 end;
 
 
@@ -275,26 +400,66 @@ end;
 // Worker methods
 // -----------------------------------------------------------------------------
 
-// Init line numbers of current text buffer
+// Init line numbers of current text buffer in all views
 procedure TCustomLineNumbersPlugin.CheckBufferChanges;
 var
-  CurBufferId:       integer;
-  CurBufferFileName: string;
+  CurViewIdx:  integer;
+  CurDocIdx:   integer;
+  CurBufferId: integer;
 
 begin
-  CurBufferId       := GetCurrentBufferId();
-  CurBufferFileName := GetFullPathFromBufferId(CurBufferId);
+  // Iterate over both main and sub view
+  for CurViewIdx := MAIN_VIEW to SUB_VIEW do
+  begin
+    // Retrieve index of active document in current view
+    CurDocIdx := GetCurrentDocIndex(CurViewIdx);
+
+    // If view is visible...
+    if CurDocIdx <> -1 then
+    begin
+      // ...retrieve text buffer ID of active document
+      // and init line numbers if neccessary
+      CurBufferId := GetBufferIdFromPos(CurViewIdx, CurDocIdx);
+      CheckBufferChanges(CurViewIdx, CurBufferId);
+    end;
+  end;
+end;
+
+
+// Init line numbers of a certain text buffer
+procedure TCustomLineNumbersPlugin.CheckBufferChanges(ViewIdx, BufferId: integer);
+var
+  FileName: string;
+
+begin
+  // Retrieve file name of document opened in text buffer
+  FileName := GetFullPathFromBufferId(BufferId);
 
   // Only init line numbers if it hasn't been done already
-  if not FBuffers.ContainsKey(CurBufferId)                            or
-     not SameFileName(FBuffers.Items[CurBufferId], CurBufferFileName) then
+  if not FBuffers.ContainsKey(BufferId)             or
+     not SameFileName(FBuffers[BufferId], FileName) then
   begin
-    // Remember buffer ID
-    FBuffers.AddOrSetValue(CurBufferId, CurBufferFileName);
+    // Remember text buffer ID and its related file name
+    FBuffers.AddOrSetValue(BufferId, FileName);
 
     // Init line numbers
-    UpdateLineNumbers(0);
+    UpdateLineNumbers(ViewIdx, 0);
   end;
+end;
+
+
+// Change related file name of current text buffer
+procedure TCustomLineNumbersPlugin.ApplyFileChanges;
+var
+  BufferId: integer;
+
+begin
+  // Get current buffer ID
+  BufferId := GetCurrentBufferId();
+
+  // If catalog contains buffer id change related file name
+  if FBuffers.ContainsKey(BufferId) then
+    FBuffers.AddOrSetValue(BufferId, GetFullPathFromBufferId(BufferId));
 end;
 
 
@@ -313,20 +478,24 @@ end;
 
 
 // Write line numbers to line number margin
-procedure TCustomLineNumbersPlugin.UpdateLineNumbers(StartLineNumber: integer);
+procedure TCustomLineNumbersPlugin.UpdateLineNumbers(ViewIdx, StartLineNumber: integer);
 var
-  ViewIdx:        integer;
   StopLineNumber: integer;
+  FormatString:   string;
   Idx:            integer;
   Number:         string;
 
 begin
-  ViewIdx        := GetCurrentView();
-  StopLineNumber := GetLineCount();
+  StopLineNumber := GetLineCount(ViewIdx);
+
+  if FSettings.LineNumbersAsHex then
+    FormatString := '%.2x'
+  else
+    FormatString := '%d';
 
   for Idx := StartLineNumber to Pred(StopLineNumber) do
   begin
-    Number := Format('%.2x', [Idx]);
+    Number := Format(FormatString, [Idx + FSettings.LineNumbersOffset]);
 
     case ViewIdx of
       MAIN_VIEW:
@@ -346,16 +515,16 @@ end;
 
 
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Plugin menu items
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 // (De)-Activate Plugin
 procedure ActivatePlugin; cdecl;
 begin
   Plugin.Enabled := not Plugin.Enabled;
 
-  Plugin.CheckMenuEntry(IDX_MENUITEM_ACTIVE, Plugin.Enabled);
+  Plugin.CheckMenuItem(IDX_MENUITEM_ACTIVE, Plugin.Enabled);
   Plugin.Activate();
 end;
 
@@ -373,10 +542,12 @@ begin
     frmSettings.ShowModal;
     frmSettings.Free;
 
-    // Load maybe updated settings and apply it to the active Notepad++ document
+    // Load maybe updated settings...
     Plugin.LoadSettings();
     Plugin.RemoveAllBuffersFromCatalog();
-    Plugin.UpdateCurBuffer();
+
+    // ...and apply it to active Notepad++ document
+    ActivatePlugin();
   end;
 end;
 

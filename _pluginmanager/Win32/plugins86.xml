@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugins>
 	<plugin name="CustomLineNumbers">
-		<unicodeVersion>1.0</unicodeVersion>
+		<unicodeVersion>1.1</unicodeVersion>
 		<description>CustomLineNumbers: A plugin to display line numbers in a custom format.</description>
 		<author>Andreas Heim</author>
 		<sourceUrl>https://github.com/dinkumoil/CustomLineNumbers</sourceUrl>
-		<latestUpdate></latestUpdate>
+		<latestUpdate>Enhanced: Displaying line numbers as hexadecimal numbers and line numbers offset can be configured now.</latestUpdate>
 		<install>
 			<unicode>
 				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.0/CustomLineNumbers_v1.0_Uni.zip</download>

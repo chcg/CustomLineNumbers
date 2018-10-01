@@ -24,7 +24,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.StrUtils, System.IOUtils,
   System.Math, System.Types, System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.ExtCtrls,
-  Vcl.StdCtrls, Vcl.Forms, Vcl.Dialogs,
+  Vcl.StdCtrls, Vcl.Samples.Spin, Vcl.Forms, Vcl.Dialogs,
 
   NppSupport, NppMenuCmdID, NppPlugin, NppPluginForms,
 
@@ -34,15 +34,22 @@ uses
 type
   TfrmSettings = class(TNppPluginForm)
 
+    chkHexLineNumbers: TCheckBox;
+
+    lblLineNumberOffset: TLabel;
+    spnLineNumberOffset: TSpinEdit;
+
     btnClose: TButton;
 
     procedure FormCreate(Sender: TObject);
 
+    procedure chkHexLineNumbersClick(Sender: TObject);
+    procedure spnLineNumberOffsetChange(Sender: TObject);
+
     procedure btnCloseClick(Sender: TObject);
 
   private
-    FInUpdateGUI: boolean;
-    FSettings:    TSettings;
+    FSettings: TSettings;
 
     procedure   LoadSettings(const AFilePath: string);
 
@@ -66,7 +73,9 @@ implementation
 
 
 const
-  TXT_CAPTION_BTN_CLOSE: string = 'Close';
+  TXT_CAPTION_CHK_HEXNUMBERS: string = 'Line numbers as hex numbers';
+  TXT_CAPTION_SPN_OFFSET:     string = 'Line numbers start at';
+  TXT_CAPTION_BTN_CLOSE:      string = 'Close';
 
 
 // =============================================================================
@@ -82,7 +91,6 @@ begin
   inherited;
 
   DefaultCloseAction := caHide;
-  FInUpdateGUI       := false;
 end;
 
 
@@ -114,7 +122,9 @@ procedure TfrmSettings.InitLanguage;
 begin
   inherited;
 
-  btnClose.Caption := TXT_CAPTION_BTN_CLOSE;
+  chkHexLineNumbers.Caption   := TXT_CAPTION_CHK_HEXNUMBERS;
+  lblLineNumberOffset.Caption := TXT_CAPTION_SPN_OFFSET;
+  btnClose.Caption            := TXT_CAPTION_BTN_CLOSE;
 end;
 
 
@@ -122,6 +132,9 @@ end;
 procedure TfrmSettings.LoadSettings(const AFilePath: string);
 begin
   FSettings := TSettings.Create(AFilePath);
+
+  chkHexLineNumbers.Checked := FSettings.LineNumbersAsHex;
+  spnLineNumberOffset.Value := FSettings.LineNumbersOffset;
 end;
 
 
@@ -129,16 +142,24 @@ end;
 // Event handlers
 // -----------------------------------------------------------------------------
 
+// Store new values from GUI to settings data model
+procedure TfrmSettings.chkHexLineNumbersClick(Sender: TObject);
+begin
+  FSettings.LineNumbersAsHex := chkHexLineNumbers.Checked;
+end;
+
+
+procedure TfrmSettings.spnLineNumberOffsetChange(Sender: TObject);
+begin
+  FSettings.LineNumbersOffset := spnLineNumberOffset.Value;
+end;
+
+
 // Close dialog
 procedure TfrmSettings.btnCloseClick(Sender: TObject);
 begin
   Close;
 end;
-
-
-// -----------------------------------------------------------------------------
-// Internal worker methods
-// -----------------------------------------------------------------------------
 
 
 end.

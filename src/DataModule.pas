@@ -33,9 +33,11 @@ type
   // Abstraction of the settings file
   TSettings = class(TObject)
   strict private
-    FIniFile:      TIniFile;
-    FValid:        boolean;
-    FEnabled:      boolean;
+    FIniFile:           TIniFile;
+    FValid:             boolean;
+    FEnabled:           boolean;
+    FLineNumbersAsHex:  boolean;
+    FLineNumbersOffset: integer;
 
     class function GetFilePath: string; static;
 
@@ -50,8 +52,10 @@ type
     class property FilePath: string  read GetFilePath;
 
     // Common properties
-    property    Valid:       boolean read FValid;
-    property    Enabled:     boolean read FEnabled write FEnabled;
+    property    Valid:             boolean read FValid;
+    property    Enabled:           boolean read FEnabled           write FEnabled;
+    property    LineNumbersAsHex:  boolean read FLineNumbersAsHex  write FLineNumbersAsHex;
+    property    LineNumbersOffset: integer read FLineNumbersOffset write FLineNumbersOffset;
 
   end;
 
@@ -65,13 +69,15 @@ uses
 
 const
   // Data for INI file section "Header"
-  SECTION_HEADER:            string = 'Header';
-  KEY_VERSION:               string = 'Version';
-  VALUE_VERSION:             string = '1.0';
+  SECTION_HEADER:               string = 'Header';
+  KEY_VERSION:                  string = 'Version';
+  VALUE_VERSION:                string = '1.0';
 
   // Data for INI file section "Settings"
-  SECTION_SETTINGS:          string = 'Settings';
-  KEY_SETTINGS_ENABLED_NAME: string = 'enabled';
+  SECTION_SETTINGS:             string = 'Settings';
+  KEY_SETTINGS_ENABLED_NAME:    string = 'enabled';
+  KEY_SETTINGS_HEXNUMBERS_NAME: string = 'hexnumbers';
+  KEY_SETTINGS_OFFSET_NAME:     string = 'offset';
 
 
 // =============================================================================
@@ -154,9 +160,19 @@ begin
 
       // ...and transfer it to the datamodel
       if Settings.IndexOfName(KEY_SETTINGS_ENABLED_NAME) >= 0 then
-        FEnabled := not StrToBool(Settings.Values[KEY_SETTINGS_ENABLED_NAME])
+        FEnabled := StrToBoolDef(Settings.Values[KEY_SETTINGS_ENABLED_NAME], true)
       else
-        FEnabled := false;
+        FEnabled := true;
+
+      if Settings.IndexOfName(KEY_SETTINGS_HEXNUMBERS_NAME) >= 0 then
+        FLineNumbersAsHex := StrToBoolDef(Settings.Values[KEY_SETTINGS_HEXNUMBERS_NAME], true)
+      else
+        FLineNumbersAsHex := true;
+
+      if Settings.IndexOfName(KEY_SETTINGS_OFFSET_NAME) >= 0 then
+        FLineNumbersOffset := StrToIntDef(Settings.Values[KEY_SETTINGS_OFFSET_NAME], 0)
+      else
+        FLineNumbersOffset := 0;
 
       // If we reached this point we can mark settings as valid
       FValid := true;
@@ -197,7 +213,9 @@ begin
   FIniFile.WriteString(SECTION_HEADER, KEY_VERSION, VALUE_VERSION);
 
   // Write settings data
-  FIniFile.WriteString(SECTION_SETTINGS, KEY_SETTINGS_ENABLED_NAME, BoolToStr(FEnabled, true));
+  FIniFile.WriteString (SECTION_SETTINGS, KEY_SETTINGS_ENABLED_NAME,    BoolToStr(FEnabled, true));
+  FIniFile.WriteString (SECTION_SETTINGS, KEY_SETTINGS_HEXNUMBERS_NAME, BoolToStr(FLineNumbersAsHex, true));
+  FIniFile.WriteInteger(SECTION_SETTINGS, KEY_SETTINGS_OFFSET_NAME,     FLineNumbersOffset);
 end;
 
 

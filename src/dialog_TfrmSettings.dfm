@@ -3,11 +3,11 @@ object frmSettings: TfrmSettings
   Top = 190
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
-  ClientHeight = 425
-  ClientWidth = 418
+  ClientHeight = 121
+  ClientWidth = 227
   Color = clBtnFace
-  Constraints.MinHeight = 461
-  Constraints.MinWidth = 434
+  Constraints.MinHeight = 157
+  Constraints.MinWidth = 243
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -18,18 +18,51 @@ object frmSettings: TfrmSettings
   Position = poDefault
   OnCreate = FormCreate
   DesignSize = (
-    418
-    425)
+    227
+    121)
   PixelsPerInch = 96
   TextHeight = 13
+  object lblLineNumberOffset: TLabel
+    Left = 16
+    Top = 48
+    Width = 137
+    Height = 13
+    AutoSize = False
+    Caption = 'Line numbers start at'
+  end
   object btnClose: TButton
-    Left = 314
-    Top = 392
+    Left = 123
+    Top = 88
     Width = 95
     Height = 25
     Anchors = [akRight, akBottom]
     Caption = 'Close'
-    TabOrder = 0
+    Default = True
+    TabOrder = 2
     OnClick = btnCloseClick
+  end
+  object chkHexLineNumbers: TCheckBox
+    Left = 16
+    Top = 16
+    Width = 201
+    Height = 17
+    Alignment = taLeftJustify
+    Caption = 'Line numbers as  hex numbers'
+    TabOrder = 0
+    OnClick = chkHexLineNumbersClick
+  end
+  object spnLineNumberOffset: TSpinEdit
+    Left = 173
+    Top = 45
+    Width = 44
+    Height = 22
+    AutoSize = False
+    Ctl3D = True
+    MaxValue = 2147483647
+    MinValue = 0
+    ParentCtl3D = False
+    TabOrder = 1
+    Value = 0
+    OnChange = spnLineNumberOffsetChange
   end
 end

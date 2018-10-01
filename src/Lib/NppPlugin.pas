@@ -100,8 +100,9 @@ type
     procedure   DoNppnSnapshotDirtyFileLoaded; virtual;
 
     // Scintilla notification handlers
-    procedure   DoScnnInsertText(LineNumber: integer); virtual;
-    procedure   DoScnnDeleteText(LineNumber: integer); virtual;
+    procedure   DoScnModified;
+    procedure   DoScnnInsertText; virtual;
+    procedure   DoScnnDeleteText; virtual;
 
     // Basic plugin properties
     property    PluginName:         nppString       read FPluginName         write FPluginName;
@@ -126,7 +127,7 @@ type
 
     // Utils and Npp message wrappers
     function    CmdIdFromMenuItemIdx(MenuItemIdx: Integer): Integer;
-    procedure   CheckMenuEntry(Idx: integer; State: boolean);
+    procedure   CheckMenuItem(MenuItemIdx: integer; State: boolean);
     procedure   PerformMenuCommand(MenuCmdId: integer; Param: integer = 0);
 
     function    GetMajorVersion: integer;
@@ -153,20 +154,22 @@ type
     function    GetLanguageName(ALangType: TNppLang): string;
     function    GetLanguageDesc(ALangType: TNppLang): string;
 
-    function    GetCurrentView: integer;
-    function    GetCurrentDocument(AView: integer): integer;
+    function    GetCurrentViewIdx: integer;
+    function    GetCurrentDocIndex(AViewIdx: integer): integer;
     function    GetCurrentLine: integer;
     function    GetCurrentColumn: integer;
 
-    function    GetCurrentBufferId: LRESULT;
+    function    GetCurrentBufferId: integer;
+    function    GetBufferIdFromPos(AViewIdx, ADocIdx: integer): LRESULT;
+    function    GetPosFromBufferId(ABufferId: integer; out ADocIdx: integer): integer;
     function    GetFullPathFromBufferId(ABufferId: integer): string;
-    function    GetCurrentBufferDirty: boolean;
+    function    GetCurrentBufferDirty(AViewIdx: integer): boolean;
 
     function    GetOpenFilesCnt(CntType: integer): integer;
     function    GetOpenFiles(CntType: integer): TStringDynArray;
 
-    function    GetLineCount: integer;
-    function    GetLineFromPosition(APosition: Integer): integer;
+    function    GetLineCount(AViewIdx: integer): integer;
+    function    GetLineFromPosition(AViewIdx, APosition: Integer): integer;
 
     procedure   GetFilePos(out FileName: string; out Line, Column: integer);
     function    GetCurrentWord: string;
@@ -289,14 +292,7 @@ begin
     NPPN_TB_MODIFICATION:         DoNppnToolbarModification;
 
     // Scintilla notifications
-    SCN_MODIFIED:
-    begin
-      if (SN.modificationType and SC_MOD_INSERTTEXT) <> 0 then
-        DoScnnInsertText(GetLineFromPosition(SN.position))
-
-      else if (SN.modificationType and SC_MOD_DELETETEXT) <> 0 then
-        DoScnnDeleteText(GetLineFromPosition(SN.position));
-    end;
+    SCN_MODIFIED:                 DoScnModified;
   end;
 end;
 
@@ -390,9 +386,9 @@ begin
 end;
 
 
-procedure TNppPlugin.CheckMenuEntry(Idx: integer; State: boolean);
+procedure TNppPlugin.CheckMenuItem(MenuItemIdx: integer; State: boolean);
 begin
-  SendMessage(NppData.NppHandle, NPPM_SETMENUITEMCHECK, WPARAM(CmdIdFromMenuItemIdx(Idx)), LPARAM(State));
+  SendMessage(NppData.NppHandle, NPPM_SETMENUITEMCHECK, WPARAM(CmdIdFromMenuItemIdx(MenuItemIdx)), LPARAM(State));
 end;
 
 
@@ -568,15 +564,15 @@ begin
 end;
 
 
-function TNppPlugin.GetCurrentView: integer;
+function TNppPlugin.GetCurrentViewIdx: integer;
 begin
   Result := SendMessage(NppData.NppHandle, NPPM_GETCURRENTVIEW, 0, 0);
 end;
 
 
-function TNppPlugin.GetCurrentDocument(AView: integer): integer;
+function TNppPlugin.GetCurrentDocIndex(AViewIdx: integer): integer;
 begin
-  Result := SendMessage(NppData.NppHandle, NPPM_GETCURRENTDOCINDEX, 0, LPARAM(AView));
+  Result := SendMessage(NppData.NppHandle, NPPM_GETCURRENTDOCINDEX, 0, LPARAM(AViewIdx));
 end;
 
 
@@ -592,9 +588,33 @@ begin
 end;
 
 
-function TNppPlugin.GetCurrentBufferId: LRESULT;
+function TNppPlugin.GetCurrentBufferId: integer;
 begin
   Result := SendMessage(NppData.NppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+end;
+
+
+function TNppPlugin.GetBufferIdFromPos(AViewIdx, ADocIdx: integer): LRESULT;
+begin
+  Result := SendMessage(NppData.NppHandle, NPPM_GETBUFFERIDFROMPOS, WPARAM(ADocIdx), LPARAM(AViewIdx));
+end;
+
+
+function TNppPlugin.GetPosFromBufferId(ABufferId: integer; out ADocIdx: integer): integer;
+var
+  Pos: LRESULT;
+
+begin
+  Result  := -1;
+  ADocIdx := -1;
+
+  Pos := SendMessage(NppData.NppHandle, NPPM_GETPOSFROMBUFFERID, WPARAM(ABufferId), LPARAM(MAIN_VIEW));
+
+  if Pos <> -1 then
+  begin
+    Result  := Pos shr 30;
+    ADocIdx := Pos and $3FFFFFFF;
+  end;
 end;
 
 
@@ -613,9 +633,9 @@ begin
 end;
 
 
-function TNppPlugin.GetCurrentBufferDirty: boolean;
+function TNppPlugin.GetCurrentBufferDirty(AViewIdx: integer): boolean;
 begin
-  case GetCurrentView() of
+  case AViewIdx of
     MAIN_VIEW: Result := (SendMessage(NppData.ScintillaMainHandle, SCI_GETMODIFY, 0, 0) <> 0);
     SUB_VIEW:  Result := (SendMessage(NppData.ScintillaSecondHandle, SCI_GETMODIFY, 0, 0) <> 0);
     else       Result := false;
@@ -659,9 +679,9 @@ begin
 end;
 
 
-function TNppPlugin.GetLineCount: integer;
+function TNppPlugin.GetLineCount(AViewIdx: integer): integer;
 begin
-  case GetCurrentView() of
+  case AViewIdx of
     MAIN_VIEW: Result := SendMessage(NppData.ScintillaMainHandle, SCI_GETLINECOUNT, 0, 0);
     SUB_VIEW:  Result := SendMessage(NppData.ScintillaSecondHandle, SCI_GETLINECOUNT, 0, 0);
     else       Result := 0;
@@ -669,9 +689,9 @@ begin
 end;
 
 
-function TNppPlugin.GetLineFromPosition(APosition: Integer): integer;
+function TNppPlugin.GetLineFromPosition(AViewIdx, APosition: Integer): integer;
 begin
-  case GetCurrentView() of
+  case AViewIdx of
     MAIN_VIEW: Result := SendMessage(NppData.ScintillaMainHandle, SCI_LINEFROMPOSITION, WPARAM(APosition), 0);
     SUB_VIEW:  Result := SendMessage(NppData.ScintillaSecondHandle, SCI_LINEFROMPOSITION, WPARAM(APosition), 0);
     else       Result := -1;
@@ -737,7 +757,7 @@ begin
   Ret := OpenFile(FileName, ReadOnly);
 
   if Ret then
-    case GetCurrentView() of
+    case GetCurrentViewIdx() of
       MAIN_VIEW: SendMessage(NppData.ScintillaMainHandle, SCI_GOTOLINE, WPARAM(Line), 0);
       SUB_VIEW:  SendMessage(NppData.ScintillaSecondHandle, SCI_GOTOLINE, WPARAM(Line), 0);
     end;
@@ -806,7 +826,7 @@ begin
 end;
 
 
-// Notifies plugins that file open operation failed
+// Notifies plugins that file load operation failed
 // hwndFrom = HWND hwndNpp
 // idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileLoadFailed;
@@ -962,17 +982,30 @@ end;
 // Scintilla notification handlers
 // -----------------------------------------------------------------------------
 
-// Text has been inserted into the document.
-// SCNotification fields: position, length, text, linesAdded
-procedure TNppPlugin.DoScnnInsertText(LineNumber: integer);
+// A scintilla text buffer was modified
+procedure TNppPlugin.DoScnModified;
+begin
+  // Text has been inserted into the document.
+  // SCNotification fields: position, length, text, linesAdded
+  if (FSCNotification.modificationType and SC_MOD_INSERTTEXT) <> 0 then
+    DoScnnInsertText()
+
+  // Text has been removed from the document.
+  // SCNotification fields: position, length, text, linesAdded
+  else if (FSCNotification.modificationType and SC_MOD_DELETETEXT) <> 0 then
+    DoScnnDeleteText();
+end;
+
+
+// Text has been inserted into the document
+procedure TNppPlugin.DoScnnInsertText;
 begin
   // override this
 end;
 
 
-// Text has been removed from the document.
-// SCNotification fields: position, length, text, linesAdded
-procedure TNppPlugin.DoScnnDeleteText(LineNumber: integer);
+// Text has been removed from the document
+procedure TNppPlugin.DoScnnDeleteText;
 begin
   // override this
 end;
