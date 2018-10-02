@@ -101,8 +101,8 @@ type
 
     // Scintilla notification handlers
     procedure   DoScnModified;
-    procedure   DoScnnInsertText; virtual;
-    procedure   DoScnnDeleteText; virtual;
+    procedure   DoScnModifiedInsertText; virtual;
+    procedure   DoScnModifiedDeleteText; virtual;
 
     // Basic plugin properties
     property    PluginName:         nppString       read FPluginName         write FPluginName;
@@ -798,19 +798,24 @@ begin
 end;
 
 
+// Notifies plugins that Npp shutdown has been triggered,
+// files have not been closed yet
+// hwndFrom = HWND hwndNpp
 procedure TNppPlugin.DoNppnBeforeShutDown;
 begin
   // override this
 end;
 
 
+// Notifies plugins that Notepad++ shut down has been cancelled
+// hwndFrom = HWND hwndNpp
 procedure TNppPlugin.DoNppnCancelShutDown;
 begin
   // override this
 end;
 
 
-// Notifies plugins that Notepad++ is about to shut down.
+// Notifies plugins that Notepad++ is about to shut down
 // hwndFrom = HWND hwndNpp
 procedure TNppPlugin.DoNppnShutdown;
 begin
@@ -818,15 +823,16 @@ begin
 end;
 
 
-// Notifies plugins that the current file is about to be loaded
+// Notifies plugins that a file is about to be loaded
 // hwndFrom = HWND hwndNpp
+// idFrom   = NULL
 procedure TNppPlugin.DoNppnFileBeforeLoad;
 begin
   // override this
 end;
 
 
-// Notifies plugins that file load operation failed
+// Notifies plugins that the file load operation failed
 // hwndFrom = HWND hwndNpp
 // idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileLoadFailed;
@@ -835,8 +841,9 @@ begin
 end;
 
 
-// Notifies plugins that a file is being opened
+// Notifies plugins that a file is about to be opened
 // hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileBeforeOpen;
 begin
   // override this
@@ -845,6 +852,7 @@ end;
 
 // Notifies plugins that the current file just opened
 // hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileOpened;
 begin
   // override this
@@ -853,6 +861,7 @@ end;
 
 // Notifies plugins that the current file is about to be closed
 // hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileBeforeClose;
 begin
   // override this
@@ -861,6 +870,7 @@ end;
 
 // Notifies plugins that the current file is just closed
 // hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileClosed;
 begin
   // override this
@@ -869,50 +879,70 @@ end;
 
 // Notifies plugins that the current file is about to be saved
 // hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileBeforeSave;
 begin
   // override this
 end;
 
 
-// Notifies plugins that the current file wass just saved
+// Notifies plugins that the current file was just saved
 // hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileSaved;
 begin
   // override this
 end;
 
 
+// Notifies plugins that the current file is about to be renamed
+// hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileBeforeRename;
 begin
   // override this
 end;
 
 
+// Notifies plugins that user cancelled the file rename operation
+// hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileRenameCancel;
 begin
   // override this
 end;
 
 
+// Notifies plugins that the current file was just renamed
+// hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileRenamed;
 begin
   // override this
 end;
 
 
+// Notifies plugins that the current file is about to be deleted
+// hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileBeforeDelete;
 begin
   // override this
 end;
 
 
+// Notifies plugins that the file delete operation failed
+// hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileDeleteFailed;
 begin
   // override this
 end;
 
 
+// Notifies plugins that the current file was just deleted
+// hwndFrom = HWND hwndNpp
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnFileDeleted;
 begin
   // override this
@@ -937,6 +967,11 @@ begin
 end;
 
 
+// Notifies plugins that the read-only state of the current buffer was changed
+// hwndFrom = int bufferID
+// idFrom   = int docStatus   can be combined by
+//                              DOCSTATUS_READONLY = 1
+//                              DOCSTATUS_BUFFERDIRTY = 2
 procedure TNppPlugin.DoNppnReadOnlyChanged;
 begin
   // override this
@@ -954,7 +989,7 @@ end;
 
 
 // Notifies plugins that a plugin command shortcut is remapped.
-// hwndFrom = ShortcutKey *ShortcutKeyStructurePointer
+// hwndFrom = PShortcutKey ShortcutKeyStructure
 // idFrom   = int cmdID
 procedure TNppPlugin.DoNppnShortcutRemapped;
 begin
@@ -971,6 +1006,9 @@ begin
 end;
 
 
+// Notifies plugins that a snapshot dirty file is loaded on startup
+// hwndFrom = NULL
+// idFrom   = int bufferID
 procedure TNppPlugin.DoNppnSnapshotDirtyFileLoaded;
 begin
   // override this
@@ -988,24 +1026,24 @@ begin
   // Text has been inserted into the document.
   // SCNotification fields: position, length, text, linesAdded
   if (FSCNotification.modificationType and SC_MOD_INSERTTEXT) <> 0 then
-    DoScnnInsertText()
+    DoScnModifiedInsertText()
 
   // Text has been removed from the document.
   // SCNotification fields: position, length, text, linesAdded
   else if (FSCNotification.modificationType and SC_MOD_DELETETEXT) <> 0 then
-    DoScnnDeleteText();
+    DoScnModifiedDeleteText();
 end;
 
 
 // Text has been inserted into the document
-procedure TNppPlugin.DoScnnInsertText;
+procedure TNppPlugin.DoScnModifiedInsertText;
 begin
   // override this
 end;
 
 
 // Text has been removed from the document
-procedure TNppPlugin.DoScnnDeleteText;
+procedure TNppPlugin.DoScnModifiedDeleteText;
 begin
   // override this
 end;

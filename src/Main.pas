@@ -50,6 +50,7 @@ type
     procedure   CheckBufferChanges(ViewIdx, BufferId: integer); overload;
     procedure   CheckTextChanges;
     procedure   ApplyFileChanges;
+
     procedure   RemoveCurrentBufferFromCatalog;
     procedure   RemoveAllBuffersFromCatalog;
 
@@ -72,8 +73,8 @@ type
     procedure   DoNppnShutdown; override;
 
     // Handler for certain Scintilla events
-    procedure   DoScnnInsertText; override;
-    procedure   DoScnnDeleteText; override;
+    procedure   DoScnModifiedInsertText; override;
+    procedure   DoScnModifiedDeleteText; override;
 
   public
     constructor Create; override;
@@ -133,10 +134,11 @@ procedure ShowAbout; cdecl; forward;
 //   * After startup of Notepad++ has been finished, depending on plugin's acti-
 //     vation status loaded from the settings file.
 //   * A file is loaded into Notepad++ to the main or the second view.
-//   * A line is added to a document displayed in the main or the second view.
-//   * A line is deleted from a document displayed in the main or the second view.
+//   * A file displayed in one of the views is reloaded. **NOT WORKING**
+//   * Lines are added to a document displayed in one of the views.
+//   * Lines are deleted from a document displayed in one of the views.
 //   * A document is moved or cloned from one view to the other.
-//   * A file is opened in a buffer whose file already has been closed, the
+//   * A file is opened in a buffer whose file already has been closed, but the
 //     buffer gets reused for the new file and its ID remains the same.
 //   * The plugin's settings are changed, the active documents of both views
 //     have to be processed.
@@ -363,8 +365,8 @@ begin
 end;
 
 
-// Called after a line of text has been inserted into the current document
-procedure TCustomLineNumbersPlugin.DoScnnInsertText;
+// Called after lines of text have been inserted into the current document
+procedure TCustomLineNumbersPlugin.DoScnModifiedInsertText;
 begin
   if not Enabled  then exit;
   if FBlockEvents then exit;
@@ -373,8 +375,8 @@ begin
 end;
 
 
-// Called after a line of text has been deleted from the current document
-procedure TCustomLineNumbersPlugin.DoScnnDeleteText;
+// Called after lines of text have been deleted from the current document
+procedure TCustomLineNumbersPlugin.DoScnModifiedDeleteText;
 begin
   if not Enabled  then exit;
   if FBlockEvents then exit;
