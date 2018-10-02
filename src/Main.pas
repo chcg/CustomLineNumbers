@@ -382,6 +382,9 @@ begin
   if FBlockEvents then exit;
 
   CheckTextChanges();
+
+  if GetLineCount(GetCurrentViewIdx()) = 1 then
+    RemoveCurrentBufferFromCatalog();
 end;
 
 
