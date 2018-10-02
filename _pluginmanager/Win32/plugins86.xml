@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugins>
 	<plugin name="CustomLineNumbers">
-		<unicodeVersion>1.1</unicodeVersion>
+		<unicodeVersion>1.1.1</unicodeVersion>
 		<description>CustomLineNumbers: A plugin to display line numbers in a custom format.</description>
 		<author>Andreas Heim</author>
 		<sourceUrl>https://github.com/dinkumoil/CustomLineNumbers</sourceUrl>
-		<latestUpdate>Enhanced: Displaying line numbers as hexadecimal numbers and line numbers offset can be configured now.</latestUpdate>
+		<latestUpdate>Fixed: Line numbers disappear after reloading a file.</latestUpdate>
 		<install>
 			<unicode>
-				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.1/CustomLineNumbers_v1.1_UNI.zip</download>
+				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.1.1/CustomLineNumbers_v1.1.1_UNI.zip</download>
 				<copy from="Win32\CustomLineNumbers.dll" to="$PLUGINDIR$\" validate="true"/>
 				<copy from="CustomLineNumbers.txt" to="$PLUGINDIR$\doc"/>
 			</unicode>

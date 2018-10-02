@@ -4,7 +4,7 @@ object frmAbout: TfrmAbout
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
   ClientHeight = 145
-  ClientWidth = 267
+  ClientWidth = 257
   Color = clBtnFace
   DefaultMonitor = dmDesktop
   Font.Charset = DEFAULT_CHARSET
@@ -17,34 +17,34 @@ object frmAbout: TfrmAbout
   Position = poDefault
   OnCreate = FormCreate
   DesignSize = (
-    267
+    257
     145)
   PixelsPerInch = 96
   TextHeight = 13
   object lblHeader: TLabel
-    Left = 24
+    Left = 16
     Top = 24
-    Width = 219
+    Width = 224
     Height = 13
     Anchors = [akLeft, akTop, akRight]
     AutoSize = False
     Caption = 'Header'
-    ExplicitWidth = 241
+    ExplicitWidth = 257
   end
   object lblInfo: TLabel
-    Left = 24
+    Left = 16
     Top = 56
-    Width = 219
+    Width = 224
     Height = 13
     Anchors = [akLeft, akTop, akRight]
     AutoSize = False
     Caption = 'Info'
-    ExplicitWidth = 241
+    ExplicitWidth = 257
   end
   object lblReadInfos: TLabel
-    Left = 24
+    Left = 16
     Top = 85
-    Width = 219
+    Width = 224
     Height = 13
     Anchors = [akLeft, akTop, akRight]
     AutoSize = False
@@ -56,16 +56,18 @@ object frmAbout: TfrmAbout
     Font.Style = [fsUnderline]
     ParentFont = False
     OnClick = lblReadInfosClick
+    ExplicitWidth = 257
   end
   object btnOK: TButton
-    Left = 187
+    Left = 177
     Top = 112
     Width = 72
     Height = 25
-    Anchors = [akLeft, akRight, akBottom]
+    Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
     TabOrder = 0
     OnClick = btnOKClick
+    ExplicitLeft = 187
   end
 end

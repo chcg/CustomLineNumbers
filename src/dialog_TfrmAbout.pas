@@ -65,7 +65,7 @@ uses
 
 const
   TXT_TITLE:      string = 'About';
-  TXT_HEADER:     string = 'Notepad++ %s Plugin v%d.%d';
+  TXT_HEADER:     string = 'Notepad++ %s Plugin v%d.%d.%d';
   TXT_INFO:       string = '%s';
   TXT_READ_INFOS: string = 'Read some infos';
 
