@@ -127,7 +127,7 @@ Set objPluginNode = objXmlDoc.documentElement.selectSingleNode("//plugin[@name='
 Set objVersionNode = objPluginNode.selectSingleNode(strVersionKey)
 objVersionNode.nodeTypedValue = strVersion
 
-'Retrieve plugin's sourceURL node and set its value
+'Retrieve plugin's sourceUrl node and set its value
 Set objSourceUrlNode = objPluginNode.selectSingleNode(strSourceUrlKey)
 objSourceUrlNode.nodeTypedValue = strRepositoryBaseUrl
 
