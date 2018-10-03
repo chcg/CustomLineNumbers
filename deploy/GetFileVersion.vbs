@@ -38,10 +38,12 @@ Dim intCnt
 Set objFSO   = CreateObject("Scripting.FileSystemObject")
 Set objShell = CreateObject("Shell.Application")
 
+
 'Terminate with error code if params count is wrong
 If WScript.Arguments.Count < 1 Then
   WScript.Quit 1
 End If
+
 
 'Retrieve absolute path of input file
 strPEFile = objFSO.GetAbsolutePathName(WScript.Arguments(0))
@@ -51,11 +53,13 @@ If Not objFSO.FileExists(strPEFile) Then
   WScript.Quit 2
 End If
 
+
 'Terminate with error code if input file's filetype is not supported
 If StrComp(objFSO.GetExtensionName(strPEFile), "exe", vbTextCompare) <> 0 And _
    StrComp(objFSO.GetExtensionName(strPEFile), "dll", vbTextCompare) <> 0 Then
   WScript.Quit 3
 End If
+
 
 'Get shell object of input file
 Set objNameSpace  = objShell.Namespace(objFSO.GetParentFolderName(strPEFile))
@@ -74,6 +78,7 @@ Next
 
 'Join version number parts and output resulting string
 WScript.Echo Join(arrFileVersion, ".")
+
 
 'Exit
 WScript.Quit 0
