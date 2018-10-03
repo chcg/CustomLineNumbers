@@ -48,14 +48,14 @@ type
     // Functions to handle Notepad++ document actions
     procedure   CheckBufferChanges; overload;
     procedure   CheckBufferChanges(ViewIdx, BufferId: integer); overload;
-    procedure   CheckTextChanges;
+    procedure   CheckTextChanges(ViewIdx: integer);
     procedure   ApplyFileChanges;
 
     procedure   RemoveCurrentBufferFromCatalog;
     procedure   RemoveAllBuffersFromCatalog;
 
     // Function to write line numbers
-    procedure   UpdateLineNumbers(ViewIdx, StartLineNumber: integer); overload;
+    procedure   UpdateLineNumbers(ViewIdx: integer; StartLineNumber: integer = -1);
 
     // Getter/Setter
     function    GetEnabled: boolean;
@@ -76,6 +76,7 @@ type
     // Handler for certain Scintilla events
     procedure   DoScnModifiedInsertText; override;
     procedure   DoScnModifiedDeleteText; override;
+    procedure   DoScnUpdateUIVScroll; override;
 
   public
     constructor Create; override;
@@ -85,8 +86,8 @@ type
     procedure   LoadSettings();
     procedure   UnloadSettings();
 
-    procedure   UpdateAllViews();
     procedure   Activate();
+    procedure   UpdateAllViews();
 
     property    Enabled: boolean read GetEnabled write SetEnabled;
 
@@ -379,24 +380,45 @@ end;
 
 // Called after lines of text have been inserted into the current document
 procedure TCustomLineNumbersPlugin.DoScnModifiedInsertText;
+var
+  ViewIdx: integer;
+
 begin
   if not Enabled  then exit;
   if FBlockEvents then exit;
 
-  CheckTextChanges();
+  ViewIdx := GetCurrentViewIdx();
+
+  CheckTextChanges(ViewIdx);
 end;
 
 
 // Called after lines of text have been deleted from the current document
 procedure TCustomLineNumbersPlugin.DoScnModifiedDeleteText;
+var
+  ViewIdx: integer;
+
 begin
   if not Enabled  then exit;
   if FBlockEvents then exit;
 
-  CheckTextChanges();
+  ViewIdx := GetCurrentViewIdx();
 
-  if GetLineCount(GetCurrentViewIdx()) = 1 then
+  CheckTextChanges(ViewIdx);
+
+  // This covers the case when a file has been reloaded
+  if GetLineCount(ViewIdx) = 1 then
     RemoveCurrentBufferFromCatalog();
+end;
+
+
+// Called when contents may have scrolled vertically
+procedure TCustomLineNumbersPlugin.DoScnUpdateUIVScroll;
+begin
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
+  UpdateLineNumbers(GetCurrentViewIdx(HWND(SCNotification.nmhdr.hwndFrom)));
 end;
 
 
@@ -404,7 +426,7 @@ end;
 // Worker methods
 // -----------------------------------------------------------------------------
 
-// Init line numbers of current text buffer in all views
+// Update line numbers of active text buffer in all views
 procedure TCustomLineNumbersPlugin.CheckBufferChanges;
 var
   CurViewIdx:  integer;
@@ -422,7 +444,7 @@ begin
     if CurDocIdx <> -1 then
     begin
       // ...retrieve text buffer ID of active document
-      // and init line numbers if neccessary
+      // and update line numbers if neccessary
       CurBufferId := GetBufferIdFromPos(CurViewIdx, CurDocIdx);
       CheckBufferChanges(CurViewIdx, CurBufferId);
     end;
@@ -430,7 +452,7 @@ begin
 end;
 
 
-// Init line numbers of a certain text buffer
+// Update line numbers of a certain text buffer
 procedure TCustomLineNumbersPlugin.CheckBufferChanges(ViewIdx, BufferId: integer);
 var
   FileName: string;
@@ -439,30 +461,23 @@ begin
   // Retrieve file name of document opened in text buffer
   FileName := GetFullPathFromBufferId(BufferId);
 
-  // Only init line numbers if it hasn't been done already
+  // Only update line numbers if it hasn't been done already
   if not FBuffers.ContainsKey(BufferId)             or
      not SameFileName(FBuffers[BufferId], FileName) then
   begin
     // Remember text buffer ID and its related file name
     FBuffers.AddOrSetValue(BufferId, FileName);
 
-    // Init line numbers
-    UpdateLineNumbers(ViewIdx, 0);
+    UpdateLineNumbers(ViewIdx);
   end;
 end;
 
 
-// Init line numbers of a certain text buffer after text changes
-procedure TCustomLineNumbersPlugin.CheckTextChanges;
-var
-  ViewIdx: integer;
-
+// Update line numbers of a certain text buffer after text changes
+procedure TCustomLineNumbersPlugin.CheckTextChanges(ViewIdx: integer);
 begin
   if SCNotification.linesAdded <> 0 then
-  begin
-    ViewIdx := GetCurrentViewIdx();
     UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
-  end;
 end;
 
 
@@ -495,51 +510,59 @@ begin
 end;
 
 
-// Write line numbers to line number margin
-procedure TCustomLineNumbersPlugin.UpdateLineNumbers(ViewIdx, StartLineNumber: integer);
+// Write line numbers to line numbers margin
+procedure TCustomLineNumbersPlugin.UpdateLineNumbers(ViewIdx: integer; StartLineNumber: integer = -1);
 var
-  CursorOld:      HCURSOR;
-  StopLineNumber: integer;
-  FormatString:   string;
-  Idx:            integer;
-  Number:         string;
+  AllLinesCnt:      integer;
+  LinesOnScreenCnt: integer;
+  StopLineNumber:   integer;
+  FormatString:     string;
+  Idx:              integer;
+  Number:           string;
 
 begin
-  CursorOld := GetCursor();
+  if not InRange(ViewIdx, MAIN_VIEW, SUB_VIEW) then exit;
 
-  if CursorOld <> 0 then
-    SetCursor(LoadCursor(0, MakeIntResource(IDC_WAIT)));
+  AllLinesCnt := GetLineCount(ViewIdx);
+  if AllLinesCnt = 0 then exit;
 
-  try
-    StopLineNumber := GetLineCount(ViewIdx);
+  LinesOnScreenCnt := GetLinesOnScreen(ViewIdx);
+  if LinesOnScreenCnt = 0 then exit;
 
-    if FSettings.LineNumbersAsHex then
-      FormatString := '%.2x'
-    else
-      FormatString := '%d';
+  if StartLineNumber < 0 then
+  begin
+    StartLineNumber := GetFirstVisibleLine(ViewIdx);
+    if StartLineNumber < 0 then exit;
+  end;
 
-    for Idx := StartLineNumber to Pred(StopLineNumber) do
-    begin
-      Number := Format(FormatString, [Idx + FSettings.LineNumbersOffset]);
+  // Since LinesOnScreenCnt is only the number of COMPLETELY visible lines on
+  // the screen we take this value to calculate the last line to process though
+  // normally it would have to be decreased by 1. Thus we can also process only
+  // PARTIALLY visible lines. BUT we have to ensure that we don't calculate a
+  // line number which is beyond the documents end.
+  StopLineNumber := EnsureRange(StartLineNumber + LinesOnScreenCnt, 0, Pred(AllLinesCnt));
 
-      case ViewIdx of
-        MAIN_VIEW:
-        begin
-          SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
-          SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
-        end;
+  if FSettings.LineNumbersAsHex
+    then FormatString := '%.2x'
+    else FormatString := '%d';
 
-        SUB_VIEW:
-        begin
-          SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
-          SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
-        end;
+  for Idx := StartLineNumber to StopLineNumber do
+  begin
+    Number := Format(FormatString, [Idx + FSettings.LineNumbersOffset]);
+
+    case ViewIdx of
+      MAIN_VIEW:
+      begin
+        SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
+        SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
+      end;
+
+      SUB_VIEW:
+      begin
+        SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
+        SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
       end;
     end;
-
-  finally
-    if CursorOld <> 0 then
-      SetCursor(CursorOld);
   end;
 end;
 

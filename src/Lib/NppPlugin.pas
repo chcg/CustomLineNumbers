@@ -100,6 +100,14 @@ type
     procedure   DoNppnSnapshotDirtyFileLoaded; virtual;
 
     // Scintilla notification handlers
+    procedure   DoScnPainted; virtual;
+
+    procedure   DoScnUpdateUI;
+    procedure   DoScnUpdateUIContent; virtual;
+    procedure   DoScnUpdateUISelection; virtual;
+    procedure   DoScnUpdateUIVScroll; virtual;
+    procedure   DoScnUpdateUIHScroll; virtual;
+
     procedure   DoScnModified;
     procedure   DoScnModifiedInsertText; virtual;
     procedure   DoScnModifiedDeleteText; virtual;
@@ -154,7 +162,8 @@ type
     function    GetLanguageName(ALangType: TNppLang): string;
     function    GetLanguageDesc(ALangType: TNppLang): string;
 
-    function    GetCurrentViewIdx: integer;
+    function    GetCurrentViewIdx: integer; overload;
+    function    GetCurrentViewIdx(ScHandle: HWND): integer; overload;
     function    GetCurrentDocIndex(AViewIdx: integer): integer;
     function    GetCurrentLine: integer;
     function    GetCurrentColumn: integer;
@@ -170,6 +179,8 @@ type
 
     function    GetLineCount(AViewIdx: integer): integer;
     function    GetLineFromPosition(AViewIdx, APosition: Integer): integer;
+    function    GetFirstVisibleLine(AViewIdx: integer): integer;
+    function    GetLinesOnScreen(AViewIdx: integer): integer;
 
     procedure   GetFilePos(out FileName: string; out Line, Column: integer);
     function    GetCurrentWord: string;
@@ -292,6 +303,8 @@ begin
     NPPN_TB_MODIFICATION:         DoNppnToolbarModification;
 
     // Scintilla notifications
+    SCN_PAINTED:                  DoScnPainted;
+    SCN_UPDATEUI:                 DoScnUpdateUI;
     SCN_MODIFIED:                 DoScnModified;
   end;
 end;
@@ -570,6 +583,19 @@ begin
 end;
 
 
+function TNppPlugin.GetCurrentViewIdx(ScHandle: HWND): integer;
+begin
+  if ScHandle = NppData.ScintillaMainHandle then
+    Result := MAIN_VIEW
+
+  else if ScHandle = NppData.ScintillaSecondHandle then
+    Result := SUB_VIEW
+
+  else
+    Result := -1;
+end;
+
+
 function TNppPlugin.GetCurrentDocIndex(AViewIdx: integer): integer;
 begin
   Result := SendMessage(NppData.NppHandle, NPPM_GETCURRENTDOCINDEX, 0, LPARAM(AViewIdx));
@@ -695,6 +721,26 @@ begin
     MAIN_VIEW: Result := SendMessage(NppData.ScintillaMainHandle, SCI_LINEFROMPOSITION, WPARAM(APosition), 0);
     SUB_VIEW:  Result := SendMessage(NppData.ScintillaSecondHandle, SCI_LINEFROMPOSITION, WPARAM(APosition), 0);
     else       Result := -1;
+  end;
+end;
+
+
+function TNppPlugin.GetFirstVisibleLine(AViewIdx: integer): integer;
+begin
+  case AViewIdx of
+    MAIN_VIEW: Result := SendMessage(NppData.ScintillaMainHandle, SCI_GETFIRSTVISIBLELINE, 0, 0);
+    SUB_VIEW:  Result := SendMessage(NppData.ScintillaSecondHandle, SCI_GETFIRSTVISIBLELINE, 0, 0);
+    else       Result := -1;
+  end;
+end;
+
+
+function TNppPlugin.GetLinesOnScreen(AViewIdx: integer): integer;
+begin
+  case AViewIdx of
+    MAIN_VIEW: Result := SendMessage(NppData.ScintillaMainHandle, SCI_LINESONSCREEN, 0, 0);
+    SUB_VIEW:  Result := SendMessage(NppData.ScintillaSecondHandle, SCI_LINESONSCREEN, 0, 0);
+    else       Result := 0;
   end;
 end;
 
@@ -1020,17 +1066,77 @@ end;
 // Scintilla notification handlers
 // -----------------------------------------------------------------------------
 
+// Painting has just been done
+procedure TNppPlugin.DoScnPainted;
+begin
+  // override this
+  // SCNotification fields: none
+end;
+
+
+// Either the text or styling of the document has changed or
+// the selection range or scroll position may have changed
+procedure TNppPlugin.DoScnUpdateUI;
+begin
+  // Contents, styling or markers may have been changed
+  if (FSCNotification.updated and SC_UPDATE_CONTENT) <> 0 then
+    DoScnUpdateUIContent();
+
+  // Selection may have been changed
+  if (FSCNotification.updated and SC_UPDATE_SELECTION) <> 0 then
+    DoScnUpdateUISelection();
+
+  // Contents may have scrolled vertically
+  if (FSCNotification.updated and SC_UPDATE_V_SCROLL) <> 0 then
+    DoScnUpdateUIVScroll();
+
+  // Contents may have scrolled horizontally
+  if (FSCNotification.updated and SC_UPDATE_H_SCROLL) <> 0 then
+    DoScnUpdateUIHScroll();
+end;
+
+
+// Contents, styling or markers may have been changed
+procedure TNppPlugin.DoScnUpdateUIContent;
+begin
+  // override this
+  // SCNotification fields: none
+end;
+
+
+// Selection may have been changed
+procedure TNppPlugin.DoScnUpdateUISelection;
+begin
+  // override this
+  // SCNotification fields: none
+end;
+
+
+// Contents may have scrolled vertically
+procedure TNppPlugin.DoScnUpdateUIVScroll;
+begin
+  // override this
+  // SCNotification fields: none
+end;
+
+
+// Contents may have scrolled horizontally
+procedure TNppPlugin.DoScnUpdateUIHScroll;
+begin
+  // override this
+  // SCNotification fields: none
+end;
+
+
 // A scintilla text buffer was modified
 procedure TNppPlugin.DoScnModified;
 begin
   // Text has been inserted into the document.
-  // SCNotification fields: position, length, text, linesAdded
   if (FSCNotification.modificationType and SC_MOD_INSERTTEXT) <> 0 then
-    DoScnModifiedInsertText()
+    DoScnModifiedInsertText();
 
   // Text has been removed from the document.
-  // SCNotification fields: position, length, text, linesAdded
-  else if (FSCNotification.modificationType and SC_MOD_DELETETEXT) <> 0 then
+  if (FSCNotification.modificationType and SC_MOD_DELETETEXT) <> 0 then
     DoScnModifiedDeleteText();
 end;
 
@@ -1039,6 +1145,7 @@ end;
 procedure TNppPlugin.DoScnModifiedInsertText;
 begin
   // override this
+  // SCNotification fields: position, length, text, linesAdded
 end;
 
 
@@ -1046,6 +1153,7 @@ end;
 procedure TNppPlugin.DoScnModifiedDeleteText;
 begin
   // override this
+  // SCNotification fields: position, length, text, linesAdded
 end;
 
 
