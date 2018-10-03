@@ -67,10 +67,11 @@ type
     procedure   DoNppnFileBeforeLoad; override;
     procedure   DoNppnFileLoadFailed; override;
     procedure   DoNppnFileOpened; override;
-    procedure   DoNppnFileBeforeClose; override;
+    procedure   DoNppnBeforeShutDown; override;
+    procedure   DoNppnCancelShutDown; override;
     procedure   DoNppnBufferActivated; override;
     procedure   DoNppnFileRenamed; override;
-    procedure   DoNppnShutdown; override;
+    procedure   DoNppnFileBeforeClose; override;
 
     // Handler for certain Scintilla events
     procedure   DoScnModifiedInsertText; override;
@@ -314,7 +315,7 @@ begin
 end;
 
 
-// Called after a file is opened
+// Called after a file has been opened
 procedure TCustomLineNumbersPlugin.DoNppnFileOpened;
 begin
   if not Enabled then exit;
@@ -323,13 +324,21 @@ begin
 end;
 
 
-// Called before a file and its tab is closed
-procedure TCustomLineNumbersPlugin.DoNppnFileBeforeClose;
+// Called when Notepad++ shut down has been triggered
+procedure TCustomLineNumbersPlugin.DoNppnBeforeShutDown;
 begin
-  if not Enabled  then exit;
-  if FBlockEvents then exit;
+  if not Enabled then exit;
 
-  RemoveCurrentBufferFromCatalog();
+  FBlockEvents := true;
+end;
+
+
+// Called when Notepad++ shut down has been cancelled
+procedure TCustomLineNumbersPlugin.DoNppnCancelShutDown;
+begin
+  if not Enabled then exit;
+
+  FBlockEvents := false;
 end;
 
 
@@ -358,10 +367,13 @@ begin
 end;
 
 
-// Called before Notepad++ shuts down
-procedure TCustomLineNumbersPlugin.DoNppnShutdown;
+// Called before a file and its tab is closed
+procedure TCustomLineNumbersPlugin.DoNppnFileBeforeClose;
 begin
-  FBlockEvents := true;
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
+  RemoveCurrentBufferFromCatalog();
 end;
 
 
