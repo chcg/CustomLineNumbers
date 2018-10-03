@@ -20,6 +20,10 @@ With this plugin you can display line numbers in the line number margin of Notep
 
 # History
 
+v1.1.2 - September 2018
+* fixed:    Notepad++ hangs for a while when it shuts down.
+* enhanced: The plugin provides cursor feedback while line numbering.
+
 v1.1.1 - September 2018
 * fixed: Line numbers disappear after reloading a file.
 

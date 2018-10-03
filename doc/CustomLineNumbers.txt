@@ -1,7 +1,7 @@
 
 ********************************************************************************
 *                                                                              *
-*          CustomLineNumbers plugin v1.1.1 for Notepad++                       *
+*          CustomLineNumbers plugin v1.1.2 for Notepad++                       *
 *          Builds for 32 and 64 bits Notepad++ installations available         *
 *                                                                              *
 *          Author: Andreas Heim, 2018                                          *
@@ -21,6 +21,12 @@ Notepad++ in a customizable format, e.g. as hex numbers.
 ===========
   History
 ===========
+
+v1.1.2 - September 2018
+~~~~~~~~~~~~~~~~~~~~~~~
+- fixed:    Notepad++ hangs for a while when it shuts down.
+- enhanced: The plugin provides cursor feedback while line numbering.
+
 
 v1.1.1 - September 2018
 ~~~~~~~~~~~~~~~~~~~~~~~
