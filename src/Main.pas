@@ -134,7 +134,7 @@ procedure ShowAbout; cdecl; forward;
 //   * After startup of Notepad++ has been finished, depending on plugin's acti-
 //     vation status loaded from the settings file.
 //   * A file is loaded into Notepad++ to the main or the second view.
-//   * A file displayed in one of the views is reloaded. **NOT WORKING**
+//   * A file displayed in one of the views is reloaded.
 //   * Lines are added to a document displayed in one of the views.
 //   * Lines are deleted from a document displayed in one of the views.
 //   * A document is moved or cloned from one view to the other.
@@ -486,36 +486,48 @@ end;
 // Write line numbers to line number margin
 procedure TCustomLineNumbersPlugin.UpdateLineNumbers(ViewIdx, StartLineNumber: integer);
 var
+  CursorOld:      HCURSOR;
   StopLineNumber: integer;
   FormatString:   string;
   Idx:            integer;
   Number:         string;
 
 begin
-  StopLineNumber := GetLineCount(ViewIdx);
+  CursorOld := GetCursor();
 
-  if FSettings.LineNumbersAsHex then
-    FormatString := '%.2x'
-  else
-    FormatString := '%d';
+  if CursorOld <> 0 then
+    SetCursor(LoadCursor(0, MakeIntResource(IDC_WAIT)));
 
-  for Idx := StartLineNumber to Pred(StopLineNumber) do
-  begin
-    Number := Format(FormatString, [Idx + FSettings.LineNumbersOffset]);
+  try
+    StopLineNumber := GetLineCount(ViewIdx);
 
-    case ViewIdx of
-      MAIN_VIEW:
-      begin
-        SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
-        SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
-      end;
+    if FSettings.LineNumbersAsHex then
+      FormatString := '%.2x'
+    else
+      FormatString := '%d';
 
-      SUB_VIEW:
-      begin
-        SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
-        SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
+    for Idx := StartLineNumber to Pred(StopLineNumber) do
+    begin
+      Number := Format(FormatString, [Idx + FSettings.LineNumbersOffset]);
+
+      case ViewIdx of
+        MAIN_VIEW:
+        begin
+          SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
+          SendMessage(NppData.ScintillaMainHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
+        end;
+
+        SUB_VIEW:
+        begin
+          SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETSTYLE, WPARAM(Idx), LPARAM(STYLE_LINENUMBER));
+          SendMessage(NppData.ScintillaSecondHandle, SCI_MARGINSETTEXT, WPARAM(Idx), LPARAM(sciBString(Number)));
+        end;
       end;
     end;
+
+  finally
+    if CursorOld <> 0 then
+      SetCursor(CursorOld);
   end;
 end;
 
