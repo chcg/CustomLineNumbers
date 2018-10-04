@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugins>
 	<plugin name="CustomLineNumbers">
-		<unicodeVersion>1.1.3</unicodeVersion>
+		<unicodeVersion>1.1.4</unicodeVersion>
 		<description>CustomLineNumbers: A plugin to display line numbers in a custom format.</description>
 		<author>Andreas Heim</author>
 		<sourceUrl>https://github.com/dinkumoil/CustomLineNumbers</sourceUrl>
-		<latestUpdate>Fixed: Severe performance decrease when editing files with even a few hundred lines.\nChanged: Cursor feedback while line numbering removed.</latestUpdate>
+		<latestUpdate>Fixed: Missing line numbers when increasing height of Notepad++ window.</latestUpdate>
 		<install>
 			<unicode>
-				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.1.3/CustomLineNumbers_v1.1.3_UNI.zip</download>
+				<download>https://github.com/dinkumoil/CustomLineNumbers/releases/download/v1.1.4/CustomLineNumbers_v1.1.4_UNI.zip</download>
 				<copy from="Win32\CustomLineNumbers.dll" to="$PLUGINDIR$\" validate="true"/>
 				<copy from="CustomLineNumbers.txt" to="$PLUGINDIR$\doc"/>
 			</unicode>

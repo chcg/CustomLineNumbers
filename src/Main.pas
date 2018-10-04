@@ -151,6 +151,7 @@ procedure ShowAbout; cdecl; forward;
 //     processed.
 //   * A document's tab is activated or becomes visible after the plugin has
 //     been reactivated.
+//   * The document's tab height is increased.
 //
 // The function should NOT be called in the following cases:
 //   * An unchanged document's tab is activated or becomes visible.
