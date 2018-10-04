@@ -34,7 +34,7 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<VerInfo_Release>4</VerInfo_Release>
+			<VerInfo_Release>5</VerInfo_Release>
 			<VerInfo_MinorVer>1</VerInfo_MinorVer>
 			<PostBuildEvent><![CDATA[cmd /c ".\BuildScripts\PostBuildScript.cmd $(CONFIG) $(PLATFORM)"
 $(PostBuildEvent)]]></PostBuildEvent>
@@ -51,7 +51,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
 			<DCC_E>false</DCC_E>
 			<DCC_F>false</DCC_F>
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-			<VerInfo_Keys>CompanyName=;FileDescription=Notepad++ plugin to display line numbers in a custom format;FileVersion=1.1.4.0;InternalName=;LegalCopyright=2018 by Andreas Heim;LegalTrademarks=;OriginalFilename=CustomLineNumbers.dll;ProductName=CustomLineNumbers;ProductVersion=1.1.4.0;Comments=A plugin for Notepad++</VerInfo_Keys>
+			<VerInfo_Keys>CompanyName=;FileDescription=Notepad++ plugin to display line numbers in a custom format;FileVersion=1.1.5.0;InternalName=;LegalCopyright=2018 by Andreas Heim;LegalTrademarks=;OriginalFilename=CustomLineNumbers.dll;ProductName=CustomLineNumbers;ProductVersion=1.1.5.0;Comments=A plugin for Notepad++</VerInfo_Keys>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win64)'!=''">

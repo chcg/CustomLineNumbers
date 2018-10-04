@@ -20,12 +20,14 @@ With this plugin you can display line numbers in the line number margin of Notep
 
 # History
 
+v1.1.5 - September 2018
+* fixed: Still problems with missing line numbers when changing height of Notepad++ window.
+
 v1.1.4 - September 2018
 * fixed: Missing line numbers when increasing height of Notepad++ window.
 
 v1.1.3 - September 2018
-* fixed:   Severe performance decrease when editing files with even a few
-           hundred lines.
+* fixed:   Severe performance decrease when editing files with even a few hundred lines.
 * changed: Cursor feedback while line numbering removed.
 
 v1.1.2 - September 2018
