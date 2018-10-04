@@ -410,12 +410,12 @@ begin
     // update line numbers else advance to next view
     case CurViewIdx of
       MAIN_VIEW:
-        if CurLineCnt > FLineCntMainView
+        if CurLineCnt <> FLineCntMainView
           then FLineCntMainView := CurLineCnt
           else continue;
-        
+
       SUB_VIEW:
-        if CurLineCnt > FLineCntSubView
+        if CurLineCnt <> FLineCntSubView
           then FLineCntSubView := CurLineCnt
           else continue;
     end;
