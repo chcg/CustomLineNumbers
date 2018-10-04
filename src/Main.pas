@@ -41,9 +41,11 @@ type
     TBufferCatalog = TDictionary<integer, string>;
 
   private
-    FSettings:    TSettings;
-    FBuffers:     TBufferCatalog;
-    FBlockEvents: boolean;
+    FSettings:        TSettings;
+    FBuffers:         TBufferCatalog;
+    FBlockEvents:     boolean;
+    FLineCntMainView: integer;
+    FLineCntSubView:  integer;
 
     // Functions to handle Notepad++ document actions
     procedure   CheckBufferChanges; overload;
@@ -74,9 +76,10 @@ type
     procedure   DoNppnFileBeforeClose; override;
 
     // Handler for certain Scintilla events
+    procedure   DoScnPainted; override;
+    procedure   DoScnUpdateUIVScroll; override;
     procedure   DoScnModifiedInsertText; override;
     procedure   DoScnModifiedDeleteText; override;
-    procedure   DoScnUpdateUIVScroll; override;
 
   public
     constructor Create; override;
@@ -185,8 +188,10 @@ begin
   AddFuncItem(TXT_MENUITEM_SETTINGS, ShowSettings);
   AddFuncItem(TXT_MENUITEM_ABOUT,    ShowAbout);
 
-  FBuffers     := TBufferCatalog.Create;
-  FBlockEvents := false;
+  FBuffers         := TBufferCatalog.Create;
+  FBlockEvents     := false;
+  FLineCntMainView := 0;
+  FLineCntSubView  := 0;
 end;
 
 
@@ -378,6 +383,62 @@ begin
 end;
 
 
+// Called when painting of Scintilla window has just been done 
+procedure TCustomLineNumbersPlugin.DoScnPainted;
+var
+  CurViewIdx: integer;
+  CurDocIdx:  integer;
+  CurLineCnt: integer;
+
+begin
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
+  // Iterate over both main and sub view
+  for CurViewIdx := MAIN_VIEW to SUB_VIEW do
+  begin
+    // Retrieve index of active document in current view
+    // If view is not visible advance to next view
+    CurDocIdx := GetCurrentDocIndex(CurViewIdx);
+    if CurDocIdx = -1 then continue;
+    
+    // Get number of lines that fit into view
+    CurLineCnt := GetLinesOnScreen(CurViewIdx);
+
+    // If view height has grown since last call
+    // update line numbers else advance to next view
+    case CurViewIdx of
+      MAIN_VIEW:
+        if CurLineCnt > FLineCntMainView
+          then FLineCntMainView := CurLineCnt
+          else continue;
+        
+      SUB_VIEW:
+        if CurLineCnt > FLineCntSubView
+          then FLineCntSubView := CurLineCnt
+          else continue;
+    end;
+
+    UpdateLineNumbers(CurViewIdx);
+  end;
+end;
+
+
+// Called when contents may have scrolled vertically
+procedure TCustomLineNumbersPlugin.DoScnUpdateUIVScroll;
+var
+  ViewIdx: integer;
+
+begin
+  if not Enabled  then exit;
+  if FBlockEvents then exit;
+
+  ViewIdx := GetCurrentViewIdx(HWND(SCNotification.nmhdr.hwndFrom));
+
+  UpdateLineNumbers(ViewIdx);
+end;
+
+
 // Called after lines of text have been inserted into the current document
 procedure TCustomLineNumbersPlugin.DoScnModifiedInsertText;
 var
@@ -409,16 +470,6 @@ begin
   // This covers the case when a file has been reloaded
   if GetLineCount(ViewIdx) = 1 then
     RemoveCurrentBufferFromCatalog();
-end;
-
-
-// Called when contents may have scrolled vertically
-procedure TCustomLineNumbersPlugin.DoScnUpdateUIVScroll;
-begin
-  if not Enabled  then exit;
-  if FBlockEvents then exit;
-
-  UpdateLineNumbers(GetCurrentViewIdx(HWND(SCNotification.nmhdr.hwndFrom)));
 end;
 
 
@@ -476,6 +527,7 @@ end;
 // Update line numbers of a certain text buffer after text changes
 procedure TCustomLineNumbersPlugin.CheckTextChanges(ViewIdx: integer);
 begin
+  // Only update if the number of lines has changed
   if SCNotification.linesAdded <> 0 then
     UpdateLineNumbers(ViewIdx, GetLineFromPosition(ViewIdx, SCNotification.position));
 end;
@@ -515,6 +567,7 @@ procedure TCustomLineNumbersPlugin.UpdateLineNumbers(ViewIdx: integer; StartLine
 var
   AllLinesCnt:      integer;
   LinesOnScreenCnt: integer;
+  FirstVisibleLine: integer;
   StopLineNumber:   integer;
   FormatString:     string;
   Idx:              integer;
@@ -529,11 +582,13 @@ begin
   LinesOnScreenCnt := GetLinesOnScreen(ViewIdx);
   if LinesOnScreenCnt = 0 then exit;
 
+  FirstVisibleLine := GetFirstVisibleLine(ViewIdx);
+  if FirstVisibleLine < 0 then exit;
+
   if StartLineNumber < 0 then
-  begin
-    StartLineNumber := GetFirstVisibleLine(ViewIdx);
-    if StartLineNumber < 0 then exit;
-  end;
+    StartLineNumber := FirstVisibleLine
+  else
+    Dec(LinesOnScreenCnt, StartLineNumber - FirstVisibleLine);
 
   // Since LinesOnScreenCnt is only the number of COMPLETELY visible lines on
   // the screen we take this value to calculate the last line to process though
