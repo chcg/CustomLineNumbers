@@ -7,7 +7,9 @@ Author: Andreas Heim, 2018
 
 # Features
 
-With this plugin you can display line numbers in the line number margin of Notepad++ in a customizable format, e.g. as hex numbers.
+With this plugin you can display line numbers in the line number margin of Notepad++ in a customizable format, e.g. as hex numbers. You can also configure the starting line number.
+
+![Settings dialog](https://raw.githubusercontent.com/dinkumoil/CustomLineNumbers/master/CustomLineNumbers.png)
 
 
 # Manual installation
